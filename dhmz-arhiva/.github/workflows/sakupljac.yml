@@ -1,0 +1,31 @@
+name: Sakupljač DHMZ
+on:
+  schedule:
+    - cron: "23 3,9,15,21 * * *"   # četiri puta dnevno (UTC); svako pokretanje pokupi zadnja 24 sata
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: sakupljac
+jobs:
+  sakupi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Sakupi podatke
+        id: sakupi
+        run: node sakupi.mjs
+        continue-on-error: true
+      - name: Spremi u repozitorij
+        run: |
+          git config user.name "dhmz-arhiva"
+          git config user.email "actions@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "Podaci $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
+      - name: Prijavi grešku
+        if: steps.sakupi.outcome == 'failure'
+        run: exit 1
